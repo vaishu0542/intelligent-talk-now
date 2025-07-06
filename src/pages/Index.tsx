@@ -4,7 +4,6 @@ import { MessageCircle, Send, User, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { toast } from '@/hooks/use-toast';
 
 interface Message {
   id: string;
@@ -24,8 +23,6 @@ const Index = () => {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKeyInput, setShowApiKeyInput] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -36,22 +33,6 @@ const Index = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  const handleApiKeySubmit = () => {
-    if (apiKey.trim()) {
-      setShowApiKeyInput(false);
-      toast({
-        title: "API Key Set",
-        description: "You can now start chatting with the AI!",
-      });
-    } else {
-      toast({
-        title: "Invalid API Key",
-        description: "Please enter a valid OpenAI API key.",
-        variant: "destructive",
-      });
-    }
-  };
 
   const simulateAIResponse = (userMessage: string) => {
     // This is a simulation - in a real app, you'd call the OpenAI API
@@ -102,53 +83,12 @@ const Index = () => {
     }
   };
 
-  if (showApiKeyInput) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-          <div className="text-center mb-6">
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <MessageCircle className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              AI Chat
-            </h1>
-            <p className="text-gray-600 mt-2">Enter your OpenAI API key to get started</p>
-          </div>
-          
-          <div className="space-y-4">
-            <Input
-              type="password"
-              placeholder="Enter your OpenAI API key..."
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="h-12"
-              onKeyPress={(e) => e.key === 'Enter' && handleApiKeySubmit()}
-            />
-            <Button 
-              onClick={handleApiKeySubmit}
-              className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-            >
-              Start Chatting
-            </Button>
-            <p className="text-sm text-gray-500 text-center">
-              Don't have an API key?{' '}
-              <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                Get one here
-              </a>
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto max-w-4xl h-screen flex flex-col">
         {/* Header */}
         <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-center">
             <div className="flex items-center space-x-3">
               <div className="bg-gradient-to-r from-blue-600 to-purple-600 w-10 h-10 rounded-full flex items-center justify-center">
                 <MessageCircle className="w-5 h-5 text-white" />
@@ -160,14 +100,6 @@ const Index = () => {
                 <p className="text-sm text-gray-600">Powered by OpenAI</p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowApiKeyInput(true)}
-              className="text-gray-600"
-            >
-              Change API Key
-            </Button>
           </div>
         </div>
 
