@@ -1,11 +1,15 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { MessageCircle, Send, User, Bot, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTheme } from '@/contexts/ThemeContext';
+import { toast } from '@/components/ui/use-toast';
 import FileUpload from '@/components/FileUpload';
 import MessageAttachment from '@/components/MessageAttachment';
+import ApiKeyInput from '@/components/ApiKeyInput';
+import { sendMessageToAI } from '@/services/aiService';
 
 interface FileAttachment {
   name: string;
@@ -24,18 +28,25 @@ interface Message {
 
 const Index = () => {
   const { theme, toggleTheme } = useTheme();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      content: "Hello! I'm your AI assistant. How can I help you today? You can also share images and files with me!",
-      sender: 'ai',
-      timestamp: new Date()
-    }
-  ]);
+  const [apiKey, setApiKey] = useState<string>('');
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const storedApiKey = localStorage.getItem('openai_api_key');
+    if (storedApiKey) {
+      setApiKey(storedApiKey);
+      setMessages([{
+        id: '1',
+        content: "Hello! I'm your AI assistant. How can I help you today? You can also share images and files with me!",
+        sender: 'ai',
+        timestamp: new Date()
+      }]);
+    }
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -45,32 +56,20 @@ const Index = () => {
     scrollToBottom();
   }, [messages]);
 
-  const simulateAIResponse = (userMessage: string, hasAttachment?: boolean) => {
-    const responses = [
-      "That's an interesting question! Let me think about that...",
-      "I understand what you're asking. Here's my perspective on that topic.",
-      "Great question! Based on what you've shared, I'd suggest...",
-      "I can help you with that. Let me break it down for you.",
-      "That's a thoughtful inquiry. From my understanding..."
-    ];
-    
-    const attachmentResponses = [
-      "Thanks for sharing that file! I can see what you've uploaded.",
-      "Interesting attachment! Let me take a look at what you've shared.",
-      "I've received your file. Here's what I think about it...",
-      "Great! I can see the attachment you've sent."
-    ];
-    
-    const responseArray = hasAttachment ? attachmentResponses : responses;
-    const randomResponse = responseArray[Math.floor(Math.random() * responseArray.length)];
-    return `${randomResponse} (Note: This is a demo response. To get real AI responses, please connect your OpenAI API key and implement the API call.)`;
+  const handleApiKeySubmit = (key: string) => {
+    setApiKey(key);
+    localStorage.setItem('openai_api_key', key);
+    setMessages([{
+      id: '1',
+      content: "Hello! I'm your AI assistant. How can I help you today? You can also share images and files with me!",
+      sender: 'ai',
+      timestamp: new Date()
+    }]);
   };
 
-  const handleFileSelect = (file: File, type: 'image' | 'file') => {
-    // Create a URL for the file
+  const handleFileSelect = async (file: File, type: 'image' | 'file') => {
     const fileUrl = URL.createObjectURL(file);
     
-    // Create message with attachment
     const messageWithAttachment: Message = {
       id: Date.now().toString(),
       content: type === 'image' ? 'Shared an image' : 'Shared a file',
@@ -87,18 +86,32 @@ const Index = () => {
     setMessages(prev => [...prev, messageWithAttachment]);
     setIsTyping(true);
 
-    // Simulate AI response to attachment
-    setTimeout(() => {
-      const aiResponse: Message = {
+    try {
+      const chatMessages = [
+        { role: 'system' as const, content: 'You are a helpful AI assistant. The user has shared a file with you.' },
+        { role: 'user' as const, content: `I've shared a ${type}: ${file.name}` }
+      ];
+
+      const aiResponse = await sendMessageToAI(chatMessages, apiKey);
+      
+      const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: simulateAIResponse('', true),
+        content: aiResponse,
         sender: 'ai',
         timestamp: new Date()
       };
       
-      setMessages(prev => [...prev, aiResponse]);
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('AI response error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to get AI response. Please check your API key.",
+        variant: "destructive"
+      });
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const handleSendMessage = async () => {
@@ -115,18 +128,36 @@ const Index = () => {
     setInputValue('');
     setIsTyping(true);
 
-    // Simulate API call delay
-    setTimeout(() => {
-      const aiResponse: Message = {
+    try {
+      const chatMessages = [
+        { role: 'system' as const, content: 'You are a helpful AI assistant.' },
+        ...messages.slice(-10).map(msg => ({
+          role: msg.sender === 'user' ? 'user' as const : 'assistant' as const,
+          content: msg.content
+        })),
+        { role: 'user' as const, content: userMessage.content }
+      ];
+
+      const aiResponse = await sendMessageToAI(chatMessages, apiKey);
+      
+      const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: simulateAIResponse(userMessage.content),
+        content: aiResponse,
         sender: 'ai',
         timestamp: new Date()
       };
       
-      setMessages(prev => [...prev, aiResponse]);
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('AI response error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to get AI response. Please check your API key.",
+        variant: "destructive"
+      });
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -135,6 +166,10 @@ const Index = () => {
       handleSendMessage();
     }
   };
+
+  if (!apiKey) {
+    return <ApiKeyInput onApiKeySubmit={handleApiKeySubmit} />;
+  }
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
@@ -218,7 +253,7 @@ const Index = () => {
                         ? 'bg-gray-800 shadow-sm border border-gray-700 text-gray-100'
                         : 'bg-white shadow-sm border border-gray-200 text-gray-900'
                     }`}>
-                      <p className="text-sm leading-relaxed">{message.content}</p>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                       {message.attachment && (
                         <MessageAttachment file={message.attachment} />
                       )}
@@ -282,13 +317,13 @@ const Index = () => {
               onFileSelect={handleFileSelect}
               disabled={isTyping}
             />
-            <Input
-              ref={inputRef}
+            <Textarea
+              ref={textareaRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Type your message..."
-              className={`flex-1 h-12 transition-colors duration-300 ${
+              className={`flex-1 min-h-[48px] max-h-32 resize-none transition-colors duration-300 ${
                 theme === 'dark'
                   ? 'bg-gray-700/90 border-gray-600 text-white placeholder:text-gray-400'
                   : 'bg-white/90 border-gray-300'
