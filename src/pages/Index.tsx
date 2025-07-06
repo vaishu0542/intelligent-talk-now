@@ -1,16 +1,25 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { MessageCircle, Send, User, Bot, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTheme } from '@/contexts/ThemeContext';
+import FileUpload from '@/components/FileUpload';
+import MessageAttachment from '@/components/MessageAttachment';
+
+interface FileAttachment {
+  name: string;
+  url: string;
+  type: 'image' | 'file';
+  size: number;
+}
 
 interface Message {
   id: string;
   content: string;
   sender: 'user' | 'ai';
   timestamp: Date;
+  attachment?: FileAttachment;
 }
 
 const Index = () => {
@@ -18,7 +27,7 @@ const Index = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: "Hello! I'm your AI assistant. How can I help you today?",
+      content: "Hello! I'm your AI assistant. How can I help you today? You can also share images and files with me!",
       sender: 'ai',
       timestamp: new Date()
     }
@@ -36,8 +45,7 @@ const Index = () => {
     scrollToBottom();
   }, [messages]);
 
-  const simulateAIResponse = (userMessage: string) => {
-    // This is a simulation - in a real app, you'd call the OpenAI API
+  const simulateAIResponse = (userMessage: string, hasAttachment?: boolean) => {
     const responses = [
       "That's an interesting question! Let me think about that...",
       "I understand what you're asking. Here's my perspective on that topic.",
@@ -46,8 +54,51 @@ const Index = () => {
       "That's a thoughtful inquiry. From my understanding..."
     ];
     
-    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+    const attachmentResponses = [
+      "Thanks for sharing that file! I can see what you've uploaded.",
+      "Interesting attachment! Let me take a look at what you've shared.",
+      "I've received your file. Here's what I think about it...",
+      "Great! I can see the attachment you've sent."
+    ];
+    
+    const responseArray = hasAttachment ? attachmentResponses : responses;
+    const randomResponse = responseArray[Math.floor(Math.random() * responseArray.length)];
     return `${randomResponse} (Note: This is a demo response. To get real AI responses, please connect your OpenAI API key and implement the API call.)`;
+  };
+
+  const handleFileSelect = (file: File, type: 'image' | 'file') => {
+    // Create a URL for the file
+    const fileUrl = URL.createObjectURL(file);
+    
+    // Create message with attachment
+    const messageWithAttachment: Message = {
+      id: Date.now().toString(),
+      content: type === 'image' ? 'Shared an image' : 'Shared a file',
+      sender: 'user',
+      timestamp: new Date(),
+      attachment: {
+        name: file.name,
+        url: fileUrl,
+        type: type,
+        size: file.size
+      }
+    };
+
+    setMessages(prev => [...prev, messageWithAttachment]);
+    setIsTyping(true);
+
+    // Simulate AI response to attachment
+    setTimeout(() => {
+      const aiResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        content: simulateAIResponse('', true),
+        sender: 'ai',
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, aiResponse]);
+      setIsTyping(false);
+    }, 1500);
   };
 
   const handleSendMessage = async () => {
@@ -168,6 +219,9 @@ const Index = () => {
                         : 'bg-white shadow-sm border border-gray-200 text-gray-900'
                     }`}>
                       <p className="text-sm leading-relaxed">{message.content}</p>
+                      {message.attachment && (
+                        <MessageAttachment file={message.attachment} />
+                      )}
                       <p className={`text-xs mt-1 ${
                         message.sender === 'user' 
                           ? 'text-green-100' 
@@ -224,6 +278,10 @@ const Index = () => {
             : 'bg-white/80 border-gray-200/50'
         }`}>
           <div className="flex space-x-2">
+            <FileUpload 
+              onFileSelect={handleFileSelect}
+              disabled={isTyping}
+            />
             <Input
               ref={inputRef}
               value={inputValue}
