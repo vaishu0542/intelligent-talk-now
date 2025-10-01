@@ -2,16 +2,8 @@
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/e70ef2b3-2d07-42a0-b721-6df9d64f021b
+**URL**:https://intelligent-talk-now.vercel.app/
 
-
-
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
 Follow these steps:
 
